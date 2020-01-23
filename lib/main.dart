@@ -9,11 +9,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Robot Controller',
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Controller'),
     );
   }
 }
@@ -33,8 +33,18 @@ class _MyHomePageState extends State<MyHomePage> {
   List<StreamSubscription<dynamic>> _streamSubscriptions =
       <StreamSubscription<dynamic>>[];
 
+  double top = 125;
+  double left;
+
+  double width;
+  double height;
+  double rotate = 0.0;
+
   @override
   Widget build(BuildContext context) {
+    width = MediaQuery.of(context).size.width;
+    height = MediaQuery.of(context).size.height;
+
     final List<String> accelerometer =
         _accelerometerValues?.map((double v) => v.toStringAsFixed(2))?.toList();
     final List<String> gyroscope =
@@ -43,22 +53,64 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        centerTitle: true,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'Accelerometer: $accelerometer',
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'Gyroscope: $gyroscope',
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Stack(
+            children: [
+              // Empty container given a width and height to set the size of the stack
+              Container(
+                height: height / 2,
+                width: width,
               ),
+              Positioned(
+                top: 125,
+                left: (width - 100) / 2,
+                child: Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.green, width: 2.0),
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: top,
+                left: left ?? (width - 100) / 2,
+                // the container has a color and is wrapped in a ClipOval to make it round
+                child: ClipOval(
+                  child: Transform.rotate(
+                    angle: rotate,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Icon(
+                          Icons.local_airport,
+                          color: Colors.red,
+                          size: 48.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            'Accelerometer: $accelerometer',
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              'Gyroscope: $gyroscope',
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -78,11 +130,16 @@ class _MyHomePageState extends State<MyHomePage> {
         .add(accelerometerEvents.listen((AccelerometerEvent event) {
       setState(() {
         _accelerometerValues = <double>[event.x, event.y, event.z];
+        //set Circle Position
+        left = ((event.x * (-12)) + ((width - 60) / 2));
+        top = event.y * 12 + 145;
       });
     }));
     _streamSubscriptions.add(gyroscopeEvents.listen((GyroscopeEvent event) {
       setState(() {
         _gyroscopeValues = <double>[event.x, event.y, event.z];
+        // ToDo Need to calculate better result
+        rotate = (-1)*event.z;
       });
     }));
   }
