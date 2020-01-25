@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:sensors/sensors.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(MyApp());
 
@@ -32,6 +34,43 @@ class _MyHomePageState extends State<MyHomePage> {
   List<double> _gyroscopeValues;
   List<StreamSubscription<dynamic>> _streamSubscriptions =
       <StreamSubscription<dynamic>>[];
+
+  static const int MAX_SAMPLE_SIZE = 3;
+  List<double> _rollingAvgGyroZ = <double>[];
+
+  List<double> roll(List<double> list, double newValue) {
+    if (list == null) {
+      return list;
+    }
+    if (list.length == MAX_SAMPLE_SIZE) {
+      list.removeAt(0);
+    }
+    list.add(newValue);
+    return list;
+  }
+
+  averageList(List<double> tallyUp) {
+    if (tallyUp == null) {
+      return 0.0;
+    }
+    double total = tallyUp.reduce((a, b) => a + b);
+    return total / tallyUp.length;
+  }
+
+  Future<String> createPost(String data) async {
+    String url = 'https://jsonplaceholder.typicode.com/posts';
+    return http.post(
+      url,
+      body: data,
+      headers: {"Content-type": "application/json; charset=UTF-8"},
+    ).then((http.Response response) {
+      final int statusCode = response.statusCode;
+      if (statusCode < 200 || statusCode > 400 || json == null) {
+        throw new Exception("Error while fetching data");
+      }
+      return "Success";
+    });
+  }
 
   double top = 125;
   double left;
@@ -64,6 +103,7 @@ class _MyHomePageState extends State<MyHomePage> {
               Container(
                 height: height / 2,
                 width: width,
+                color: Colors.lightBlue[100],
               ),
               Positioned(
                 top: 125,
@@ -110,6 +150,9 @@ class _MyHomePageState extends State<MyHomePage> {
               'Gyroscope: $gyroscope',
             ),
           ),
+          Text(
+            'rotate: $rotate',
+          ),
         ],
       ),
     );
@@ -131,16 +174,35 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         _accelerometerValues = <double>[event.x, event.y, event.z];
         //set Circle Position
-        left = ((event.x * (-12)) + ((width - 60) / 2));
-        top = event.y * 12 + 145;
+        double cpw = ((width - 60) / 2);
+        left = ((event.x * (-cpw / 10.0)) + cpw);
+        double cph = (height - 60) / 4;
+        top = event.y * (cph / 10.0) + cph;
+        Movement movement = new Movement(event.y, event.x, rotate);
+        String json = jsonEncode(movement);
+        createPost(json);
       });
     }));
     _streamSubscriptions.add(gyroscopeEvents.listen((GyroscopeEvent event) {
       setState(() {
         _gyroscopeValues = <double>[event.x, event.y, event.z];
-        // ToDo Need to calculate better result
-        rotate = (-1)*event.z;
+        _rollingAvgGyroZ = roll(_rollingAvgGyroZ, event.x);
+        rotate = averageList(_rollingAvgGyroZ);
       });
     }));
   }
+}
+
+class Movement {
+  final double move;
+  final double strafe;
+  final double rotate;
+
+  Movement(this.move, this.strafe, this.rotate);
+
+  Map<String, dynamic> toJson() => {
+        'move': move,
+        'strafe': strafe,
+        'rotate': rotate,
+      };
 }
