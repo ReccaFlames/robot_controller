@@ -112,7 +112,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 Positioned(
                   top: planeTop ?? (screenHeight - 60) / 4,
-                  left: planeLeft ?? (screenHeight - 60) / 2,
+                  left: planeLeft ?? (screenWidth - 60) / 2,
                   // the container has a color and is wrapped in a ClipOval to make it round
                   child: ClipOval(
                     child: Container(
