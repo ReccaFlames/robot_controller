@@ -3,8 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:sensors/sensors.dart';
-import 'package:http/http.dart' as http;
 
+import 'rollAverage.dart';
+import 'jsonSender.dart';
 import 'movement.dart';
 
 void main() => runApp(MyApp());
@@ -14,19 +15,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Robot Controller',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: Scaffold(body: MyHomePage(title: 'Controller')),
+      home: Scaffold(body: MyHomePage()),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
-  final String title;
-
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -37,42 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<StreamSubscription<dynamic>> _streamSubscriptions =
       <StreamSubscription<dynamic>>[];
 
-  static const int MAX_SAMPLE_SIZE = 3;
-  List<double> _rollingAvgGyroZ = <double>[];
-
-  List<double> roll(List<double> list, double newValue) {
-    if (list == null) {
-      return list;
-    }
-    if (list.length == MAX_SAMPLE_SIZE) {
-      list.removeAt(0);
-    }
-    list.add(newValue);
-    return list;
-  }
-
-  averageList(List<double> tallyUp) {
-    if (tallyUp == null) {
-      return 0.0;
-    }
-    double total = tallyUp.reduce((a, b) => a + b);
-    return total / tallyUp.length;
-  }
-
-  Future<String> createPost(String data) async {
-    String url = 'https://jsonplaceholder.typicode.com/posts';
-    return http.post(
-      url,
-      body: data,
-      headers: {"Content-type": "application/json; charset=UTF-8"},
-    ).then((http.Response response) {
-      final int statusCode = response.statusCode;
-      if (statusCode < 200 || statusCode > 400 || json == null) {
-        throw new Exception("Error while fetching data");
-      }
-      return "Success";
-    });
-  }
+  RollAverage rollAverage = new RollAverage();
 
   bool saveData = false;
 
@@ -90,7 +53,8 @@ class _MyHomePageState extends State<MyHomePage> {
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () {
-          Scaffold.of(context).hideCurrentSnackBar();// Some code to undo the change.
+          Scaffold.of(context)
+              .hideCurrentSnackBar(); // Some code to undo the change.
         },
       ),
     );
@@ -109,14 +73,12 @@ class _MyHomePageState extends State<MyHomePage> {
         _gyroscopeValues?.map((double v) => v.toStringAsFixed(2))?.toList();
 
     void sendData(bool value) {
-      if(value) {
-        Scaffold.of(context).showSnackBar(
-            buildSnackBarInfo(text: 'STARTED sending data')
-        );
+      if (value) {
+        Scaffold.of(context)
+            .showSnackBar(buildSnackBarInfo(text: 'STARTED sending data'));
       } else {
-        Scaffold.of(context).showSnackBar(
-            buildSnackBarInfo(text: 'STOPED sending data')
-        );
+        Scaffold.of(context)
+            .showSnackBar(buildSnackBarInfo(text: 'STOPED sending data'));
       }
       setState(() {
         saveData = value;
@@ -137,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   color: Colors.lightBlue[100],
                 ),
                 Positioned(
-                  top: ((screenHeight/2)-60)/2,
+                  top: ((screenHeight / 2) - 60) / 2,
                   left: (screenWidth - 100) / 2,
                   child: Container(
                     height: 100,
@@ -149,7 +111,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
                 Positioned(
-                  top: planeTop ?? (screenHeight -60) / 4,
+                  top: planeTop ?? (screenHeight - 60) / 4,
                   left: planeLeft ?? (screenHeight - 60) / 2,
                   // the container has a color and is wrapped in a ClipOval to make it round
                   child: ClipOval(
@@ -189,9 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Switch(
               value: saveData,
-              onChanged: (value) {
-                sendData(value);
-              },
+              onChanged: sendData,
             ),
           ],
         ),
@@ -221,15 +181,14 @@ class _MyHomePageState extends State<MyHomePage> {
         planeTop = event.y * (cph / 10.0) + cph;
         if (saveData) {
           String json = jsonEncode(Movement(event.y, event.x, rotate));
-          createPost(json);
+          JsonSender.createPost(json);
         }
       });
     }));
     _streamSubscriptions.add(gyroscopeEvents.listen((GyroscopeEvent event) {
       setState(() {
         _gyroscopeValues = <double>[event.x, event.y, event.z];
-        _rollingAvgGyroZ = roll(_rollingAvgGyroZ, event.x);
-        rotate = averageList(_rollingAvgGyroZ);
+        rotate = rollAverage.calculate(event.x);
       });
     }));
   }
