@@ -76,11 +76,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool saveData = false;
 
-  double top;
-  double left;
+  double planeTop;
+  double planeLeft;
 
-  double width;
-  double height;
+  double screenWidth;
+  double screenHeight;
   double rotate = 0.0;
 
   buildSnackBarInfo({String text}) {
@@ -100,8 +100,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-    width = MediaQuery.of(context).size.width;
-    height = MediaQuery.of(context).size.height;
+    screenWidth = MediaQuery.of(context).size.width;
+    screenHeight = MediaQuery.of(context).size.height;
 
     final List<String> accelerometer =
         _accelerometerValues?.map((double v) => v.toStringAsFixed(2))?.toList();
@@ -132,13 +132,13 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 // Empty container given a width and height to set the size of the stack
                 Container(
-                  height: height / 2,
-                  width: width,
+                  height: screenHeight / 2,
+                  width: screenWidth,
                   color: Colors.lightBlue[100],
                 ),
                 Positioned(
-                  top: ((height/2)-60)/2,
-                  left: (width - 100) / 2,
+                  top: ((screenHeight/2)-60)/2,
+                  left: (screenWidth - 100) / 2,
                   child: Container(
                     height: 100,
                     width: 100,
@@ -149,30 +149,19 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
                 Positioned(
-                  top: top ?? (height -60) / 4,
-                  left: left ?? (width - 60) / 2,
+                  top: planeTop ?? (screenHeight -60) / 4,
+                  left: planeLeft ?? (screenHeight - 60) / 2,
                   // the container has a color and is wrapped in a ClipOval to make it round
-                  child: GestureDetector(
-                    onPanStart: (DragStartDetails details) {
-                      print('start');
-                    },
-                    onPanUpdate: (DragUpdateDetails details) {
-                      print('update');
-                    },
-                    onPanEnd: (DragEndDetails details) {
-                      print('end');
-                    },
-                    child: ClipOval(
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        color: Colors.transparent,
-                        child: Center(
-                          child: Icon(
-                            Icons.local_airport,
-                            color: Colors.red,
-                            size: 48.0,
-                          ),
+                  child: ClipOval(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Icon(
+                          Icons.local_airport,
+                          color: Colors.red,
+                          size: 48.0,
                         ),
                       ),
                     ),
@@ -226,10 +215,10 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         _accelerometerValues = <double>[event.x, event.y, event.z];
         //set Circle Position
-        double cpw = ((width - 60) / 2);
-        left = ((event.x * (-cpw / 10.0)) + cpw);
-        double cph = (height - 60) / 4;
-        top = event.y * (cph / 10.0) + cph;
+        double cpw = ((screenWidth - 60) / 2);
+        planeLeft = ((event.x * (-cpw / 10.0)) + cpw);
+        double cph = (screenHeight - 60) / 4;
+        planeTop = event.y * (cph / 10.0) + cph;
         if (saveData) {
           String json = jsonEncode(Movement(event.y, event.x, rotate));
           createPost(json);
