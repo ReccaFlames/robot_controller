@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class JsonSender {
-  static Future<String> createPost(String data) async {
-    String url = 'https://jsonplaceholder.typicode.com/posts';
+  static Future<String> createPost(String data, String url) async {
     print(data);
     return http.post(
       url,

@@ -7,6 +7,7 @@ import 'package:sensors/sensors.dart';
 import 'rollAverage.dart';
 import 'jsonSender.dart';
 import 'movement.dart';
+import 'sensor_card.dart';
 
 void main() => runApp(MyApp());
 
@@ -38,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   RollAverage rollAverage = new RollAverage();
 
   bool saveData = false;
+  String url = 'https://jsonplaceholder.typicode.com/posts';
 
   double planeTop;
   double planeLeft;
@@ -131,28 +133,52 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
-            Text(
-              'Accelerometer: $accelerometer',
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[
+                SensorCard(title: 'Accelerometer', subtitle: '$accelerometer'),
+                SensorCard(title: 'Gyroscope', subtitle: '$gyroscope'),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'Gyroscope: $gyroscope',
-              ),
-            ),
-            Text(
-              'rotate: $rotate',
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 10.0),
-              child: Text(
-                'Sender',
-              ),
-            ),
-            Switch(
-              value: saveData,
-              onChanged: sendData,
-            ),
+
+            Row(
+              children: <Widget>[
+                Expanded(
+                  flex: 1,
+                  child: Card(
+                    elevation: 1,
+                    margin: EdgeInsets.all(8),
+                    child: Column(
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10.0),
+                          child: Text(
+                            'Sender',
+                          ),
+                        ),
+                        Switch(
+                          value: saveData,
+                          onChanged: sendData,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10.0),
+                          child: Text(
+                            'Endpoint',
+                          ),
+                        ),
+                        FlatButton(
+                          child: Text(url),
+                        ),
+                      ],
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                ),
+              ],
+            )
           ],
         ),
       ),
@@ -181,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
         planeTop = event.y * (cph / 10.0) + cph;
         if (saveData) {
           String json = jsonEncode(Movement(event.y, event.x, rotate));
-          JsonSender.createPost(json);
+          JsonSender.createPost(json, url);
         }
       });
     }));
