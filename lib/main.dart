@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:sensors/sensors.dart';
 import 'package:http/http.dart' as http;
 
+import 'movement.dart';
+
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -15,7 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.red,
       ),
-      home: MyHomePage(title: 'Controller'),
+      home: Scaffold(body: MyHomePage(title: 'Controller')),
     );
   }
 }
@@ -72,15 +74,32 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  double top = 125;
+  bool saveData = false;
+
+  double top;
   double left;
 
   double width;
   double height;
   double rotate = 0.0;
 
+  buildSnackBarInfo({String text}) {
+    return SnackBar(
+      content: Text(text),
+      duration: Duration(seconds: 5),
+      action: SnackBarAction(
+        label: 'Undo',
+        onPressed: () {
+          Scaffold.of(context).hideCurrentSnackBar();// Some code to undo the change.
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
     width = MediaQuery.of(context).size.width;
     height = MediaQuery.of(context).size.height;
 
@@ -89,71 +108,104 @@ class _MyHomePageState extends State<MyHomePage> {
     final List<String> gyroscope =
         _gyroscopeValues?.map((double v) => v.toStringAsFixed(2))?.toList();
 
+    void sendData(bool value) {
+      if(value) {
+        Scaffold.of(context).showSnackBar(
+            buildSnackBarInfo(text: 'STARTED sending data')
+        );
+      } else {
+        Scaffold.of(context).showSnackBar(
+            buildSnackBarInfo(text: 'STOPED sending data')
+        );
+      }
+      setState(() {
+        saveData = value;
+      });
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        centerTitle: true,
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Stack(
-            children: [
-              // Empty container given a width and height to set the size of the stack
-              Container(
-                height: height / 2,
-                width: width,
-                color: Colors.lightBlue[100],
-              ),
-              Positioned(
-                top: 125,
-                left: (width - 100) / 2,
-                child: Container(
-                  height: 100,
-                  width: 100,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.green, width: 2.0),
-                    borderRadius: BorderRadius.circular(50),
+      key: _scaffoldKey,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            Stack(
+              children: [
+                // Empty container given a width and height to set the size of the stack
+                Container(
+                  height: height / 2,
+                  width: width,
+                  color: Colors.lightBlue[100],
+                ),
+                Positioned(
+                  top: ((height/2)-60)/2,
+                  left: (width - 100) / 2,
+                  child: Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.green, width: 2.0),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: top,
-                left: left ?? (width - 100) / 2,
-                // the container has a color and is wrapped in a ClipOval to make it round
-                child: ClipOval(
-                  child: Transform.rotate(
-                    angle: rotate,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      color: Colors.transparent,
-                      child: Center(
-                        child: Icon(
-                          Icons.local_airport,
-                          color: Colors.red,
-                          size: 48.0,
+                Positioned(
+                  top: top ?? (height -60) / 4,
+                  left: left ?? (width - 60) / 2,
+                  // the container has a color and is wrapped in a ClipOval to make it round
+                  child: GestureDetector(
+                    onPanStart: (DragStartDetails details) {
+                      print('start');
+                    },
+                    onPanUpdate: (DragUpdateDetails details) {
+                      print('update');
+                    },
+                    onPanEnd: (DragEndDetails details) {
+                      print('end');
+                    },
+                    child: ClipOval(
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        color: Colors.transparent,
+                        child: Center(
+                          child: Icon(
+                            Icons.local_airport,
+                            color: Colors.red,
+                            size: 48.0,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          Text(
-            'Accelerometer: $accelerometer',
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              'Gyroscope: $gyroscope',
+              ],
             ),
-          ),
-          Text(
-            'rotate: $rotate',
-          ),
-        ],
+            Text(
+              'Accelerometer: $accelerometer',
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                'Gyroscope: $gyroscope',
+              ),
+            ),
+            Text(
+              'rotate: $rotate',
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: Text(
+                'Sender',
+              ),
+            ),
+            Switch(
+              value: saveData,
+              onChanged: (value) {
+                sendData(value);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -178,9 +230,10 @@ class _MyHomePageState extends State<MyHomePage> {
         left = ((event.x * (-cpw / 10.0)) + cpw);
         double cph = (height - 60) / 4;
         top = event.y * (cph / 10.0) + cph;
-        Movement movement = new Movement(event.y, event.x, rotate);
-        String json = jsonEncode(movement);
-        createPost(json);
+        if (saveData) {
+          String json = jsonEncode(Movement(event.y, event.x, rotate));
+          createPost(json);
+        }
       });
     }));
     _streamSubscriptions.add(gyroscopeEvents.listen((GyroscopeEvent event) {
@@ -191,18 +244,4 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     }));
   }
-}
-
-class Movement {
-  final double move;
-  final double strafe;
-  final double rotate;
-
-  Movement(this.move, this.strafe, this.rotate);
-
-  Map<String, dynamic> toJson() => {
-        'move': move,
-        'strafe': strafe,
-        'rotate': rotate,
-      };
 }
